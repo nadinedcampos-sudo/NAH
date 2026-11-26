@@ -1,0 +1,791 @@
+<title>Atlas Anatomia Psi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: cabeçalho fino, abas, palco 3D à esquerda + painel de estudo à direita (empilha no celular) */
+:root{
+  --bg:#EDF1F3; --surface:#FFFFFF; --surface2:#E1E8EC; --ink:#0F2229; --muted:#4F636E; --line:#C9D4DA;
+  --accent:#C2263F; --accent-ink:#FFFFFF; --teal:#0B7A82; --good:#1E8E5A; --warn:#B7791F;
+  --stage-a:#F7FAFB; --stage-b:#D5DFE5;
+  --f-display:'Bricolage Grotesque','Inter',system-ui,sans-serif;
+  --f-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B1317; --surface:#131E24; --surface2:#1C2B33; --ink:#E6EEF1; --muted:#9DB1BB; --line:#27383F;
+  --accent:#FF6B81; --accent-ink:#2A0710; --teal:#52D3DB; --good:#5BD494; --warn:#F2B84B;
+  --stage-a:#1B2B33; --stage-b:#0A1115; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0B1317; --surface:#131E24; --surface2:#1C2B33; --ink:#E6EEF1; --muted:#9DB1BB; --line:#27383F;
+  --accent:#FF6B81; --accent-ink:#2A0710; --teal:#52D3DB; --good:#5BD494; --warn:#F2B84B;
+  --stage-a:#1B2B33; --stage-b:#0A1115; color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.6 var(--f-body);margin:0;
+  padding-block:0 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;margin:0;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.mono{font-family:var(--f-mono)}
+
+header.top{padding:22px 0 14px;display:grid;gap:14px;grid-template-columns:1fr auto;align-items:end}
+header.top h1{font-size:clamp(1.6rem,4vw,2.4rem);letter-spacing:-.01em}
+header.top p{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.why{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:420px}
+.why span{font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:99px;color:var(--muted);background:var(--surface)}
+.themebtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;font-size:13px}
+
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);display:flex;gap:4px;overflow-x:auto;padding:8px 0;border-bottom:1px solid var(--line);scrollbar-width:thin}
+nav.tabs button{flex:none;border:0;background:transparent;padding:8px 14px;border-radius:8px;font-weight:500;color:var(--muted);white-space:nowrap}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+nav.tabs button:hover:not([aria-selected="true"]){background:var(--surface2);color:var(--ink)}
+
+.viewer{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;margin-top:18px;align-items:start}
+.stagebox{position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px)}
+#stage{position:relative;height:min(68vh,640px);min-height:340px;border-radius:14px;overflow:hidden;border:1px solid var(--line);
+  background:radial-gradient(ellipse at 50% 40%,var(--stage-a),var(--stage-b));touch-action:none;cursor:grab}
+#stage.drag{cursor:grabbing}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted);pointer-events:none;max-width:70%}
+#tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:3px 8px;border-radius:6px;opacity:0;transform:translate(10px,-28px);white-space:nowrap;transition:opacity .1s}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.tools button,.chip{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 11px;font-size:13px}
+.tools button[aria-pressed="true"]{background:var(--teal);color:var(--bg);border-color:var(--teal)}
+.tools label[hidden]{display:none}
+.tools label{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.tools input[type=range]{width:130px;accent-color:var(--teal)}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);align-items:center;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.webglfail{padding:24px;color:var(--muted)}
+
+.panel{min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h2{font-size:1.5rem}
+.sub{font-family:var(--f-mono);font-size:12px;color:var(--teal);margin:4px 0 10px}
+.card p{margin:8px 0}
+.card ul{padding-left:18px;margin:8px 0;display:grid;gap:6px}
+.lab{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:16px 0 4px}
+.clin{border-left:3px solid var(--accent);padding:2px 0 2px 12px;margin-top:6px}
+.dica{background:var(--surface2);border-radius:10px;padding:10px 12px;margin-top:14px;font-size:14px}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;font-weight:600;margin-left:8px;vertical-align:middle;color:#fff}
+.seenbtn{margin-top:14px;border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 12px;font-size:13px}
+.seenbtn[aria-pressed="true"]{border-color:var(--good);color:var(--good)}
+.parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.parts button{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 10px;font-size:13px}
+.parts button[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.parts i{width:10px;height:10px;border-radius:50%;flex:none}
+.parts .ok::after{content:"✓";color:var(--good);font-weight:700}
+.prog{font-size:12px;color:var(--muted);margin-top:10px}
+.bar{height:5px;background:var(--surface2);border-radius:9px;overflow:hidden;margin-top:4px}
+.bar b{display:block;height:100%;background:var(--good);width:0}
+
+.sec{margin-top:22px}
+.sec h2{font-size:1.6rem;margin-bottom:6px}
+.lead{color:var(--muted);max-width:68ch}
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-top:10px}
+summary{cursor:pointer;padding:14px 18px;font-family:var(--f-display);font-weight:700;font-size:1.1rem;list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--f-mono);color:var(--muted)}
+details[open] summary::after{content:"–"}
+details .in{padding:0 18px 16px;max-width:78ch}
+details .in h4{margin:14px 0 4px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+details .in ul{padding-left:18px;display:grid;gap:5px;margin:6px 0}
+.prova{background:color-mix(in srgb,var(--accent) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;padding:10px 12px;margin-top:12px;font-size:14px}
+.prova b{color:var(--accent)}
+.tw{overflow-x:auto;margin:8px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:460px}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--surface2)}
+
+.fc-top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+select{font:inherit;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.flip{width:100%;max-width:640px;min-height:240px;margin:0 auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px;text-align:left;cursor:pointer}
+.flip .t{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--teal);font-weight:600}
+.flip .q{font-family:var(--f-display);font-size:1.45rem;margin-top:10px;line-height:1.25}
+.flip .a{font-size:1.02rem;margin-top:10px}
+.flip small{display:block;margin-top:18px;color:var(--muted)}
+.fc-act{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.fc-act button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 18px}
+.fc-act .yes{background:var(--good);border-color:var(--good);color:#fff}
+.fc-act .no{border-color:var(--accent);color:var(--accent)}
+a{color:var(--teal)}
+.src li{margin:4px 0}
+.note{border:1px dashed var(--line);border-radius:12px;padding:14px 16px;margin-top:14px;background:var(--surface)}
+
+@media (max-width:900px){
+  header.top{grid-template-columns:1fr}.why{justify-content:flex-start}
+  .viewer{grid-template-columns:minmax(0,1fr)}
+  .stagebox{position:static}
+  #stage{height:52vh;min-height:300px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>Atlas Anatomia Psi</h1>
+    <p>Anatomia do sistema nervoso em 3D para o 3º semestre de Psicologia. Gire, toque, isole estruturas e estude com resumos e flashcards.</p>
+  </div>
+  <div class="why" aria-label="O que o estudo em 3D ativa">
+    <span>Memória visual</span><span>Memória associativa</span><span>Retenção</span><span>Entendimento profundo</span>
+    <button class="themebtn" id="themeBtn" type="button" aria-label="Alternar tema claro e escuro">Tema</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Seções">
+  <button role="tab" data-tab="encefalo">Encéfalo</button>
+  <button role="tab" data-tab="neuronio">Neurônio</button>
+  <button role="tab" data-tab="nervos">Nervos cranianos</button>
+  <button role="tab" data-tab="medula">Medula e coluna</button>
+  <button role="tab" data-tab="resumos">Resumos</button>
+  <button role="tab" data-tab="flashcards">Flashcards</button>
+  <button role="tab" data-tab="sobre">Sobre e fontes</button>
+</nav>
+
+<section id="viewer" class="viewer" hidden>
+  <div class="stagebox">
+    <div id="stage">
+      <canvas id="cv" aria-label="Modelo 3D interativo"></canvas>
+      <div class="hint">Arraste para girar · role ou pince para zoom · clique numa estrutura</div>
+      <div id="tip"></div>
+    </div>
+    <div class="tools">
+      <button id="bAuto" type="button" aria-pressed="false">Girar sozinho</button>
+      <button id="bIso" type="button" aria-pressed="false">Isolar selecionada</button>
+      <button id="bReset" type="button">Resetar vista</button>
+      <label id="cortexWrap">Córtex <input id="cortex" type="range" min="0" max="100" value="100" aria-label="Opacidade do córtex"></label>
+    </div>
+    <div class="tools legend" id="legend" hidden></div>
+  </div>
+  <div class="panel">
+    <div class="card" id="info"></div>
+    <div class="parts" id="parts"></div>
+    <div class="prog"><span id="progTxt"></span><div class="bar"><b id="progBar"></b></div></div>
+  </div>
+</section>
+
+<section id="resumos" class="sec" hidden>
+  <h2>Resumos por tema</h2>
+  <p class="lead">Do básico ao avançado, só o que costuma ser cobrado em Neuroanatomia para Psicologia. Cada bloco termina com o que mais cai.</p>
+  <div id="resList"></div>
+</section>
+
+<section id="flashcards" class="sec" hidden>
+  <h2>Flashcards</h2>
+  <p class="lead">Clique no cartão (ou use a barra de espaço) para ver a resposta. Seu progresso fica salvo neste navegador.</p>
+  <div class="fc-top">
+    <label>Tema <select id="fcTema"></select></label>
+    <label><input type="checkbox" id="fcOnlyNew"> só os que ainda não sei</label>
+    <button class="chip" id="fcShuf" type="button">Embaralhar</button>
+    <span id="fcCount" class="mono" style="font-size:12px;color:var(--muted)"></span>
+  </div>
+  <button class="flip" id="fcCard" type="button"></button>
+  <div class="fc-act"><button class="no" id="fcNo" type="button">Revisar depois</button><button class="yes" id="fcYes" type="button">Já sei</button></div>
+</section>
+
+<section id="sobre" class="sec" hidden>
+  <h2>Sobre e fontes</h2>
+  <div class="note">
+    <b>O que este atlas cobre hoje.</b> Encéfalo (13 estruturas), neurônio e sinapse, os 12 nervos cranianos e medula espinal com coluna vertebral, mais resumos e 40 flashcards. Os modelos são esquemáticos e gerados no navegador, ideais para localizar e relacionar estruturas, não para medir proporções reais.
+  </div>
+  <div class="note">
+    <b>O que ainda falta (corpo inteiro).</b> Ossos, músculos, artérias e nervos periféricos de todo o corpo exigem malhas anatômicas de alta resolução. O próximo passo é incorporar um modelo aberto (por exemplo Z-Anatomy ou BodyParts3D, com licença livre) convertido para um arquivo 3D publicado junto da página. Peça quando quiser que eu faça essa etapa.
+  </div>
+  <div class="note">
+    <b>Sobre a ementa da USP.</b> Não consegui abrir a ementa oficial da disciplina do Instituto de Psicologia (a busca só retornou a grade horária e a lista de disciplinas). Montei o conteúdo a partir do que os programas de neuroanatomia e neurociência para psicologia têm em comum. Confirme o código da sua disciplina no Júpiter Web e compare a ementa e a bibliografia com os resumos daqui.
+  </div>
+  <h3 style="margin-top:20px">Fontes consultadas</h3>
+  <ul class="src">
+    <li><a href="https://www.ip.usp.br/site/wp-content/uploads/2024/03/GRADE-HORARIA-2024_1-SITE_12032024_publica.pdf" target="_blank" rel="noopener">IP-USP, grade horária 2024/1</a> e <a href="https://www.ip.usp.br/site/subjects-2/" target="_blank" rel="noopener">lista de disciplinas</a></li>
+    <li><a href="https://psicologia.ufc.br/wp-content/uploads/2022/08/hf0249-bases-neurofisiologicas-do-comportamento-humano.pdf" target="_blank" rel="noopener">UFC, Bases neurofisiológicas do comportamento humano</a></li>
+    <li><a href="https://neuroanatomy.georgetown.edu/neuroanatomy-syllabus" target="_blank" rel="noopener">Georgetown, syllabus de neuroanatomia</a></li>
+    <li><a href="https://cos.gatech.edu/sites/default/files/images/neuro/syllabus_apph4400.pdf" target="_blank" rel="noopener">Georgia Tech, syllabus de neuroanatomia</a></li>
+    <li><a href="https://bulletin.uga.edu/Course/Details/3342" target="_blank" rel="noopener">UGA, neuroanatomia para ciências comportamentais</a></li>
+    <li><a href="https://research.stonybrook.edu/commcms/psychology/_pdfs/breadth_course_pdfs/2019/PSY%20565%20Syllabus%20Fall%202019%20.pdf" target="_blank" rel="noopener">Stony Brook, syllabus de psicologia (neuroanatomia)</a></li>
+  </ul>
+  <p class="lead">Livros comuns nesse tipo de disciplina no Brasil: Machado, <i>Neuroanatomia Funcional</i>; Bear, Connors e Paradiso, <i>Neurociências</i>; Kandel, <i>Princípios de Neurociências</i>; Lent, <i>Cem Bilhões de Neurônios</i>. Confira a bibliografia oficial da sua disciplina.</p>
+</section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+var $=function(s,r){return (r||document).querySelector(s)};
+var store={get:function(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ============ DADOS ============ */
+var DATA={};
+DATA.encefalo=[
+{id:'frontal',nome:'Lobo frontal',sub:'Anterior ao sulco central · Brodmann 4, 6, 8–11, 44–47',cor:'#E9806E',
+ resumo:'Maior lobo. Planeja, decide, inibe impulsos e comanda o movimento voluntário.',
+ pontos:['Giro pré-central (área 4): córtex motor primário, organizado em homúnculo motor.','Córtex pré-frontal (dorsolateral, ventromedial, orbitofrontal): funções executivas, memória de trabalho, tomada de decisão, regulação emocional e julgamento social.','Área de Broca (44/45, giro frontal inferior do hemisfério dominante, em geral o esquerdo): produção da fala.','Amadurece por último: a mielinização do pré-frontal continua até meados dos 20 anos.'],
+ clinica:'Lesão pré-frontal causa apatia, desinibição, perseveração e mudança de personalidade (caso Phineas Gage, 1848). Lesão na área de Broca causa afasia de Broca: fala não fluente com compreensão preservada.',
+ dica:'Frontal = Fazer: planejar, executar, falar.'},
+{id:'parietal',nome:'Lobo parietal',sub:'Posterior ao sulco central, acima do temporal',cor:'#F2C14E',
+ resumo:'Integra sensações do corpo com o espaço ao redor.',
+ pontos:['Giro pós-central (áreas 3, 1, 2): córtex somatossensorial primário, com homúnculo sensorial.','Lóbulos parietais superior e inferior: atenção espacial, esquema corporal, integração visuomotora.','Giros supramarginal e angular (hemisfério dominante): leitura, escrita e cálculo.'],
+ clinica:'Lesão parietal direita: heminegligência contralateral (a pessoa ignora o lado esquerdo do espaço e do próprio corpo). Síndrome de Gerstmann (lesão esquerda): agrafia, acalculia, agnosia digital e confusão direita-esquerda. Apraxias.',
+ dica:'Parietal = Perceber o corpo e o espaço.'},
+{id:'temporal',nome:'Lobo temporal',sub:'Abaixo da fissura lateral (de Sylvius)',cor:'#5FA8D3',
+ resumo:'Audição, linguagem receptiva, reconhecimento de objetos e faces, e memória.',
+ pontos:['Córtex auditivo primário (41/42, giro de Heschl).','Área de Wernicke (22, posterior, hemisfério dominante): compreensão da linguagem.','Giro fusiforme: reconhecimento de faces.','Face medial: hipocampo e amígdala (memória e emoção).'],
+ clinica:'Afasia de Wernicke: fala fluente porém sem sentido, com compreensão prejudicada. Prosopagnosia. Epilepsia temporal: déjà vu, medo súbito, automatismos. Síndrome de Klüver-Bucy (lesão temporal bilateral): docilidade, hiperoralidade, hipersexualidade.',
+ dica:'Temporal = ouvir (têmporas ficam ao lado das orelhas) e guardar memórias.'},
+{id:'occipital',nome:'Lobo occipital',sub:'Polo posterior · Brodmann 17, 18, 19',cor:'#7BC8A4',
+ resumo:'Processamento visual.',
+ pontos:['V1 (área 17, córtex estriado, sulco calcarino): primeira análise cortical da visão.','Áreas 18 e 19: processamento visual associativo.','Via ventral (occipito-temporal, "o quê"): identificar objetos. Via dorsal (occipito-parietal, "onde/como"): localizar e agir.'],
+ clinica:'Lesão de V1: escotomas ou cegueira cortical (com possível visão cega, blindsight). Lesão da via ventral: agnosia visual (vê, mas não reconhece o objeto).',
+ dica:'Occipital = Olhar. Fica no fundo da cabeça, longe dos olhos, e processa o que eles veem.'},
+{id:'cerebelo',nome:'Cerebelo',sub:'Fossa posterior, dorsal à ponte · ≈10% do volume, ≈80% dos neurônios',cor:'#B79CED',
+ resumo:'Ajusta o movimento: coordenação, equilíbrio, tônus e aprendizado motor.',
+ pontos:['Dois hemisférios e o vérmis central; conecta-se ao tronco pelos pedúnculos cerebelares.','Compara o movimento planejado com o executado e corrige o erro.','Também participa de atenção, linguagem, emoção e cognição (síndrome cerebelar cognitivo-afetiva).'],
+ clinica:'Ataxia, dismetria, tremor de intenção, disartria e nistagmo, do mesmo lado da lesão (ipsilateral).',
+ dica:'Cerebelo = "pequeno cérebro" que dá fluidez. Lesão: movimento desajeitado, não paralisia.'},
+{id:'tronco',nome:'Tronco encefálico',sub:'Mesencéfalo · ponte · bulbo',cor:'#8FA3AE',
+ resumo:'Liga encéfalo e medula; controla funções vitais e o nível de alerta.',
+ pontos:['Nervos cranianos III a XII emergem dele.','Formação reticular (sistema ativador reticular ascendente): vigília, sono e atenção.','Bulbo: centros respiratório e cardiovascular. Ponte: ponte entre córtex e cerebelo. Mesencéfalo: reflexos visuais e auditivos.','Núcleos monoaminérgicos: substância negra e área tegmental ventral (dopamina), locus coeruleus (noradrenalina), núcleos da rafe (serotonina).'],
+ clinica:'Lesão extensa: coma ou morte encefálica. Síndrome do encarceramento (locked-in): consciente, mas só move os olhos. Opioides em excesso deprimem o centro respiratório do bulbo.',
+ dica:'De cima para baixo: Mesencéfalo, Ponte, Bulbo (M-P-B).'},
+{id:'talamo',nome:'Tálamo',sub:'Diencéfalo · duas massas ovais ao lado do III ventrículo',cor:'#F28C28',deep:true,
+ resumo:'Estação de retransmissão: quase toda informação sensorial passa por ele antes de chegar ao córtex.',
+ pontos:['Exceção: o olfato chega ao córtex sem passar pelo tálamo.','Núcleos específicos: geniculado lateral (visão), geniculado medial (audição), VPL e VPM (tato, dor, temperatura).','Núcleo mediodorsal: conexões com o pré-frontal. Pulvinar: atenção visual.','Participa de consciência, sono e atenção.'],
+ clinica:'Dor central após AVC talâmico (síndrome de Dejerine-Roussy). Síndrome de Korsakoff (deficiência de tiamina, comum no alcoolismo): lesão de corpos mamilares e tálamo mediodorsal, com amnésia e confabulação.',
+ dica:'Tálamo = "porteiro" do córtex.'},
+{id:'hipotalamo',nome:'Hipotálamo e hipófise',sub:'Diencéfalo · abaixo do tálamo · ≈ tamanho de uma amêndoa',cor:'#E5446D',deep:true,
+ resumo:'Mantém o equilíbrio interno (homeostase) e liga o cérebro ao sistema endócrino.',
+ pontos:['Fome, sede, temperatura, sono e ritmo circadiano (núcleo supraquiasmático).','Eixo HPA do estresse: CRH → ACTH (hipófise) → cortisol (adrenal).','Ocitocina e vasopressina são produzidas aqui e liberadas pela neuro-hipófise.','Comanda o sistema nervoso autônomo e comportamentos de sobrevivência (alimentar, reprodutivo, defensivo).'],
+ clinica:'Estresse crônico mantém o eixo HPA hiperativo, associado a depressão e ansiedade. Lesões alteram apetite, sono, temperatura e comportamento sexual.',
+ dica:'Os 4 F: Feeding, Fighting, Fleeing, Fornication (alimentar, lutar, fugir, reproduzir).'},
+{id:'amigdala',nome:'Amígdala',sub:'Lobo temporal medial, anterior ao hipocampo',cor:'#FF3B3B',deep:true,
+ resumo:'Detecta o que é emocionalmente importante, sobretudo ameaça.',
+ pontos:['Condicionamento ao medo e respostas de luta ou fuga (via hipotálamo e tronco).','Via rápida tálamo→amígdala ("low road") responde antes da análise cortical detalhada (LeDoux).','Modula a consolidação de memórias emocionais no hipocampo.','Receptora de contexto do pré-frontal, que consegue regular (frear) sua ativação.'],
+ clinica:'Hiperatividade em transtornos de ansiedade, fobias e TEPT. Paciente S.M. (doença de Urbach-Wiethe), com lesão amigdalar, quase não sente medo.',
+ dica:'Amígdala = alarme de incêndio. Dispara rápido, às vezes com falso positivo.'},
+{id:'hipocampo',nome:'Hipocampo',sub:'Lobo temporal medial · forma de cavalo-marinho',cor:'#2CB67D',deep:true,
+ resumo:'Forma e consolida memórias declarativas e mapeia o espaço.',
+ pontos:['Memória episódica (o que vivi) e semântica (o que sei) passam pelo hipocampo antes de serem armazenadas no córtex.','Células de lugar: navegação espacial (Nobel 2014, O\'Keefe, May-Britt e Edvard Moser).','Parte do circuito de Papez e do sistema límbico.','Muito sensível ao estresse crônico e aos glicocorticoides. Neurogênese no giro denteado do adulto: tema ainda debatido em humanos.'],
+ clinica:'Paciente H.M. (Henry Molaison, 1953): retirada bilateral causou amnésia anterógrada grave, com memória procedural preservada. Doença de Alzheimer começa no córtex entorrinal e no hipocampo. Atrofia relatada em depressão e TEPT.',
+ dica:'Hipocampo = "salvar arquivo". Sem ele não se grava memória nova, mas as antigas persistem.'},
+{id:'gangliosbase',nome:'Gânglios da base',sub:'Caudado · putâmen · globo pálido (+ subtálamo e substância negra)',cor:'#3FB8AF',deep:true,
+ resumo:'Selecionam e iniciam movimentos e consolidam hábitos.',
+ pontos:['Circuitos cortico-estriado-tálamo-corticais paralelos: motor, cognitivo e límbico.','A dopamina da substância negra (parte compacta) modula o estriado (caudado + putâmen).','Aprendizado de procedimentos e hábitos.'],
+ clinica:'Parkinson: perda de dopamina da substância negra, com tremor de repouso, rigidez e bradicinesia. Huntington: degeneração do caudado, com coreia, declínio cognitivo e alterações de humor. TOC, Tourette e TDAH envolvem circuitos fronto-estriatais.',
+ dica:'Parkinson = pouco movimento (hipocinesia). Huntington = movimento demais (coreia).'},
+{id:'accumbens',nome:'Núcleo accumbens',sub:'Estriado ventral · circuito de recompensa',cor:'#FFD166',deep:true,
+ resumo:'Centro da motivação e do "querer".',
+ pontos:['Recebe dopamina da área tegmental ventral (via mesolímbica).','Mais ligado ao "querer" (motivação) do que ao prazer em si.','Drogas de abuso elevam a dopamina nessa região. Conecta-se à amígdala, ao hipocampo e ao pré-frontal.'],
+ clinica:'Dependência química, jogo patológico e anedonia na depressão. A estimulação cerebral profunda dessa região é estudada para depressão e dependência.',
+ dica:'Accumbens = botão de "quero mais".'},
+{id:'caloso',nome:'Corpo caloso',sub:'Maior feixe de substância branca · ≈200 milhões de axônios',cor:'#F1F5F8',deep:true,
+ resumo:'Ponte entre os dois hemisférios.',
+ pontos:['Partes: rostro, joelho, corpo e esplênio.','Calosotomia (tratamento de epilepsia grave) gerou os estudos de cérebro dividido de Sperry e Gazzaniga: cada hemisfério pode processar informação de modo independente.','Lateralização típica: linguagem à esquerda; prosódia, atenção espacial e reconhecimento facial com forte contribuição direita.'],
+ clinica:'Agenesia do corpo caloso. Lesão do esplênio: alexia sem agrafia. Síndrome da mão alienígena.',
+ dica:'Cérebro dividido: o hemisfério direito vê, o esquerdo explica. É a lição clássica sobre confabulação.'}
+];
+DATA.neuronio=[
+{id:'soma',nome:'Corpo celular (soma)',sub:'Pericário · 4–100 µm',cor:'#E9806E',resumo:'Centro metabólico do neurônio.',pontos:['Contém organelas e grandes quantidades de retículo rugoso (corpúsculos de Nissl), pois o neurônio produz muita proteína.','Integra os sinais recebidos pelos dendritos.','Agrupamentos de corpos celulares: núcleos e córtex (SNC) ou gânglios (SNP). É a substância cinzenta.'],clinica:'Neurônios são em sua maioria pós-mitóticos: lesões e doenças degenerativas (Alzheimer, Parkinson) causam perdas que o sistema só compensa em parte, por plasticidade.',dica:'Cinzenta = corpos celulares. Branca = axônios mielinizados.'},
+{id:'nucleo',nome:'Núcleo',sub:'Dentro do soma',cor:'#6C5CE7',resumo:'Guarda o DNA e comanda a expressão gênica.',pontos:['Plasticidade de longo prazo (memória) depende de expressão gênica e síntese de novas proteínas.','Todos os neurônios de um indivíduo têm o mesmo genoma, mas expressam genes diferentes.'],clinica:'Expansões de repetições CAG no gene HTT causam a doença de Huntington.',dica:'Memória de longa duração exige síntese proteica.'},
+{id:'dendritos',nome:'Dendritos',sub:'Árvore dendrítica',cor:'#F2C14E',resumo:'Recebem informação de outros neurônios.',pontos:['Espinhas dendríticas: sítios da maioria das sinapses excitatórias; mudam de forma com o aprendizado.','Somam potenciais excitatórios (PEPS) e inibitórios (PIPS) pós-sinápticos.','Quanto mais ramificado, mais conexões o neurônio pode integrar.'],clinica:'Redução de espinhas e ramificação em estresse crônico, depressão, esquizofrenia e envelhecimento. Experiência enriquecida aumenta a arborização.',dica:'Dendrito = "entrada". Axônio = "saída".'},
+{id:'axonio',nome:'Axônio',sub:'Cone de implantação · fibra · até > 1 m',cor:'#5FA8D3',resumo:'Conduz o potencial de ação até as terminações.',pontos:['O potencial de ação nasce no segmento inicial do axônio (zona de gatilho), se a soma dos sinais atingir o limiar.','Lei do tudo ou nada: o disparo tem sempre a mesma amplitude.','Transporte axonal leva vesículas e organelas nos dois sentidos.'],clinica:'Lesão axonal difusa em traumatismo craniano. No SNP o axônio pode regenerar, no SNC muito pouco.',dica:'Entra pelos dendritos, é decidido no cone, sai pelo axônio.'},
+{id:'mielina',nome:'Bainha de mielina',sub:'Oligodendrócitos (SNC) · células de Schwann (SNP)',cor:'#F1F5F8',resumo:'Isolante que acelera a condução.',pontos:['Fibras mielinizadas conduzem até ≈100 m/s; fibras amielínicas, cerca de 1 m/s.','Mielinização do córtex pré-frontal vai até a idade adulta jovem.','Um oligodendrócito mieliniza vários axônios; uma célula de Schwann, um segmento de um axônio.'],clinica:'Esclerose múltipla: ataque autoimune à mielina do SNC. Guillain-Barré: desmielinização do SNP.',dica:'SNC = Oligodendrócito. SNP = Schwann.'},
+{id:'ranvier',nome:'Nós de Ranvier',sub:'Intervalos entre segmentos de mielina',cor:'#FF9F1C',resumo:'Pontos onde o potencial de ação é regenerado.',pontos:['Alta densidade de canais de sódio dependentes de voltagem.','Condução saltatória: o sinal "salta" de nó em nó, o que economiza energia e aumenta a velocidade.'],clinica:'Anestésicos locais (lidocaína) bloqueiam canais de sódio e impedem a condução.',dica:'Saltatória vem de saltar.'},
+{id:'terminal',nome:'Terminal axonal e sinapse',sub:'Botão sináptico · fenda de ≈20 nm',cor:'#FF4D6D',resumo:'Onde a informação passa de um neurônio para o próximo.',pontos:['Potencial de ação abre canais de cálcio e vesículas liberam neurotransmissor por exocitose.','Neurotransmissor se liga a receptores ionotrópicos (rápidos) ou metabotrópicos (lentos, modulam).','Término do sinal: recaptação, degradação enzimática ou difusão.','Principais: glutamato (excita), GABA (inibe), dopamina (recompensa, movimento), serotonina (humor, sono), noradrenalina (alerta), acetilcolina (atenção, memória, músculo).'],clinica:'ISRS bloqueiam a recaptação de serotonina. Antipsicóticos bloqueiam receptores D2. Benzodiazepínicos potencializam o GABA-A. A potenciação de longa duração (LTP) é um modelo celular de aprendizado.',dica:'"Neurônios que disparam juntos, conectam-se juntos" (Hebb).'}
+];
+var T={s:'Sensitivo',m:'Motor',b:'Misto'}, TC={s:'#2F7DE1',m:'#D9822B',b:'#2E9E6B'};
+DATA.nervos=[
+{id:'cn1',nome:'I · Olfatório',tipo:'s',sub:'Bulbo olfatório → córtex olfatório',resumo:'Olfato.',pontos:['É o único sentido que chega ao córtex sem passar pelo tálamo.','Conexão direta com amígdala e hipocampo: cheiros evocam memórias e emoções com muita força.'],clinica:'Anosmia: traumatismo craniano, infecções virais, e sinal precoce de Parkinson e Alzheimer.',dica:'O cheiro de um lugar traz a lembrança inteira. Isso é o sistema límbico agindo.'},
+{id:'cn2',nome:'II · Óptico',tipo:'s',sub:'Retina → quiasma óptico → tálamo (geniculado lateral) → V1',resumo:'Visão.',pontos:['No quiasma, as fibras nasais cruzam: cada hemisfério recebe o campo visual contralateral.','Reflexo pupilar à luz: aferência pelo II, eferência pelo III.'],clinica:'Lesão do quiasma (por exemplo tumor de hipófise): hemianopsia bitemporal. Lesão após o quiasma: hemianopsia homônima contralateral.',dica:'Dois olhos, um campo visual: hemisfério direito vê o lado esquerdo do mundo.'},
+{id:'cn3',nome:'III · Oculomotor',tipo:'m',sub:'Mesencéfalo',resumo:'Movimento ocular, elevação da pálpebra e constrição da pupila.',pontos:['Inerva a maioria dos músculos extrínsecos do olho.','Fibras parassimpáticas controlam o músculo constritor da pupila (miose).'],clinica:'Ptose, olho desviado para baixo e para fora e pupila dilatada.',dica:'III e IV partem do mesencéfalo.'},
+{id:'cn4',nome:'IV · Troclear',tipo:'m',sub:'Mesencéfalo (emerge dorsalmente)',resumo:'Músculo oblíquo superior do olho.',pontos:['Único nervo craniano que emerge pela face posterior do tronco.','Tem o trajeto intracraniano mais longo.'],clinica:'Diplopia ao olhar para baixo (descer escadas, ler).',dica:'Troclear: o "tróclea" é a polia do oblíquo superior.'},
+{id:'cn5',nome:'V · Trigêmeo',tipo:'b',sub:'Ponte · três ramos: V1 oftálmico, V2 maxilar, V3 mandibular',resumo:'Sensibilidade da face e mastigação.',pontos:['Maior nervo craniano.','V1 e V2 são sensitivos; V3 é sensitivo e motor (músculos mastigadores).'],clinica:'Neuralgia do trigêmeo: dor facial lancinante desencadeada por estímulos leves.',dica:'Tri = três ramos.'},
+{id:'cn6',nome:'VI · Abducente',tipo:'m',sub:'Ponte (junção bulbo-pontina)',resumo:'Músculo reto lateral: leva o olho para fora (abdução).',pontos:['Inerva um único músculo.','Trajeto longo, vulnerável a aumento de pressão intracraniana.'],clinica:'Estrabismo convergente e diplopia horizontal.',dica:'Abducente abduz.'},
+{id:'cn7',nome:'VII · Facial',tipo:'b',sub:'Ponte (junção bulbo-pontina)',resumo:'Expressão facial, paladar dos 2/3 anteriores da língua, lágrimas e saliva.',pontos:['Músculos da expressão facial: base da comunicação emocional não verbal.','O sorriso voluntário (via córtex motor) e o espontâneo (via sistemas emocionais) usam vias diferentes.'],clinica:'Paralisia de Bell (periférica): toda a hemiface fica paralisada. Lesão central (AVC): poupa a testa.',dica:'Facial = rosto expressivo.'},
+{id:'cn8',nome:'VIII · Vestibulococlear',tipo:'s',sub:'Junção bulbo-pontina',resumo:'Audição (coclear) e equilíbrio (vestibular).',pontos:['Cóclea transforma som em sinal nervoso; labirinto detecta movimento e posição da cabeça.','Projeções vestibulares ao cerebelo e aos músculos oculares (reflexo vestíbulo-ocular).'],clinica:'Perda auditiva, zumbido (tinnitus), vertigem.',dica:'Vestíbulo (equilíbrio) + cóclea (audição).'},
+{id:'cn9',nome:'IX · Glossofaríngeo',tipo:'b',sub:'Bulbo',resumo:'Paladar do 1/3 posterior da língua, deglutição e sensibilidade da faringe.',pontos:['Recebe informação de barorreceptores do seio carotídeo (pressão arterial).','Fibras parassimpáticas para a glândula parótida.'],clinica:'Perda do reflexo de vômito, disfagia.',dica:'Glosso = língua; faríngeo = garganta.'},
+{id:'cn10',nome:'X · Vago',tipo:'b',sub:'Bulbo',resumo:'Principal nervo parassimpático: coração, pulmões e vísceras abdominais.',pontos:['Reduz a frequência cardíaca e aumenta a digestão ("descansar e digerir").','Maioria das fibras é aferente: leva ao cérebro o estado do corpo (eixo intestino-cérebro).','Controla laringe e faringe (voz, deglutição).','Tônus vagal alto está associado a boa regulação emocional (variabilidade da frequência cardíaca).'],clinica:'Estimulação do nervo vago é usada na epilepsia e na depressão resistente.',dica:'Vago = "andarilho": percorre pescoço, tórax e abdome.'},
+{id:'cn11',nome:'XI · Acessório',tipo:'m',sub:'Bulbo e medula cervical',resumo:'Músculos trapézio e esternocleidomastóideo.',pontos:['Elevar os ombros e girar a cabeça.'],clinica:'Fraqueza para encolher o ombro, ombro caído.',dica:'Acessório = ajuda os movimentos do pescoço e ombro.'},
+{id:'cn12',nome:'XII · Hipoglosso',tipo:'m',sub:'Bulbo',resumo:'Músculos da língua.',pontos:['Fala, mastigação e deglutição.'],clinica:'Língua desvia para o lado da lesão ao ser protraída.',dica:'Hipo = abaixo; glosso = língua (passa sob a língua).'},
+{id:'tronco',nome:'Tronco encefálico',tipo:null,sub:'Mesencéfalo · ponte · bulbo',cor:'#8FA3AE',resumo:'Origem aparente da maioria dos nervos cranianos.',pontos:['I e II ligam-se ao prosencéfalo; III e IV, ao mesencéfalo; V a VIII, à ponte e junção bulbo-pontina; IX a XII, ao bulbo (XI também à medula cervical).','Sensitivos (S): I, II, VIII. Motores (M): III, IV, VI, XI, XII. Mistos (B): V, VII, IX, X.'],clinica:'Muitos cursos usam a frase em inglês "Some Say Marry Money, But My Brother Says Big Brains Matter More" (S, S, M, M, B, M, B, S, B, B, M, M) para fixar os tipos de I a XII. Crie a sua em português.',dica:'Parassimpático craniano: III, VII, IX e X.'}
+];
+DATA.medula=[
+{id:'cervical',nome:'Coluna cervical',sub:'C1–C7 · 8 pares de nervos cervicais (C1–C8)',cor:'#E9806E',resumo:'Sustenta a cabeça e dá passagem às vias do pescoço e dos membros superiores.',pontos:['Atlas (C1) e áxis (C2): rotação e flexão da cabeça.','Plexo braquial (C5–T1) inerva o membro superior.','Nervo frênico (C3–C5) comanda o diafragma: "C3, 4, 5 mantêm o diafragma vivo".'],clinica:'Lesão cervical alta: tetraplegia e risco ventilatório. Lesão por mergulho em água rasa é um exemplo clássico.',dica:'7 cervicais, 12 torácicas, 5 lombares (jantar 7h, almoço 12h, lanche 5h).'},
+{id:'toracica',nome:'Coluna torácica',sub:'T1–T12 · articula com as costelas',cor:'#F2C14E',resumo:'Forma a caixa torácica; origem do sistema simpático.',pontos:['Neurônios simpáticos pré-ganglionares ficam na coluna intermediolateral de T1 a L2 (sistema toracolombar).','Curvatura de cifose.'],clinica:'Lesão torácica: paraplegia. Lesão acima de T6 pode causar disreflexia autonômica.',dica:'Simpático sai de T1–L2.'},
+{id:'lombar',nome:'Coluna lombar',sub:'L1–L5 · maiores vértebras',cor:'#5FA8D3',resumo:'Suporta a maior parte do peso.',pontos:['Curvatura de lordose.','Plexos lombar e sacral formam o nervo isquiático (ciático).','Punção lombar é feita abaixo do fim da medula (L3–L4), com segurança.'],clinica:'Hérnia de disco lombar comprime raízes e causa dor irradiada (ciatalgia).',dica:'A punção lombar é feita abaixo do cone medular.'},
+{id:'sacro',nome:'Sacro e cóccix',sub:'S1–S5 fundidas · cóccix',cor:'#B79CED',resumo:'Liga a coluna à pelve.',pontos:['Nervos sacrais S2–S4: parassimpático sacral, que controla bexiga, intestino distal e funções sexuais.'],clinica:'Lesão sacral causa disfunção de bexiga, intestino e função sexual.',dica:'Parassimpático = craniossacral (III, VII, IX, X e S2–S4).'},
+{id:'medula',nome:'Medula espinal',sub:'≈45 cm · termina no cone medular (L1–L2)',cor:'#F1F5F8',resumo:'Condução entre encéfalo e corpo, mais reflexos.',pontos:['Substância cinzenta em "H": corno dorsal (sensitivo), ventral (motor), lateral (autonômico). Branca em volta: tratos.','Ascendentes: colunas dorsais (tato fino, propriocepção) e espinotalâmico (dor e temperatura).','Descendentes: corticoespinal (movimento voluntário).','Arco reflexo: receptor → neurônio sensitivo → medula → neurônio motor → músculo. O reflexo patelar é monossináptico.'],clinica:'Hemissecção (Brown-Séquard): perda motora e de tato fino do mesmo lado, dor e temperatura do lado oposto. Choque espinhal: arreflexia transitória.',dica:'Sensitivo entra pela raiz dorsal. Motor sai pela raiz ventral (Bell-Magendie).'},
+{id:'cauda',nome:'Cauda equina',sub:'Raízes de L2 a S5 dentro do canal',cor:'#FF9F1C',resumo:'"Rabo de cavalo" de raízes nervosas abaixo do cone medular.',pontos:['É formada por raízes, não por medula. Por isso lesões ali têm comportamento de nervo periférico.'],clinica:'Síndrome da cauda equina (emergência): dor lombar, anestesia em sela, retenção urinária e fraqueza de pernas.',dica:'Anestesia em sela = sinal de alarme.'},
+{id:'nervos',nome:'Nervos espinais',sub:'31 pares: 8 C, 12 T, 5 L, 5 S, 1 coccígeo',cor:'#2CB67D',resumo:'Saída segmentar da medula para o corpo.',pontos:['Cada nervo é misto: junta raiz dorsal (sensitiva, com gânglio) e raiz ventral (motora).','Dermátomo: área da pele inervada por um nervo espinal. Miótomo: músculos inervados por ele.'],clinica:'Herpes-zóster segue um dermátomo. Neuropatias periféricas e radiculopatias causam déficit segmentar.',dica:'Dermátomos permitem localizar a lesão pelo mapa de sensibilidade.'}
+];
+
+var RES=[
+{t:'Linguagem anatômica',h:'<p>Todo texto de anatomia usa a <b>posição anatômica</b>: corpo ereto, olhando para frente, braços ao lado com palmas voltadas para frente.</p><h4>Planos</h4><ul><li><b>Sagital</b>: divide em direito e esquerdo (mediano = bem no meio).</li><li><b>Coronal (frontal)</b>: divide em anterior e posterior.</li><li><b>Transversal (axial)</b>: divide em superior e inferior.</li></ul><h4>Termos de direção</h4><ul><li><b>Anterior/ventral</b> × <b>posterior/dorsal</b>; <b>superior/cranial</b> × <b>inferior/caudal</b>; <b>medial</b> × <b>lateral</b>; <b>proximal</b> × <b>distal</b>; <b>superficial</b> × <b>profundo</b>.</li><li><b>Rostral</b> (em direção ao nariz) × <b>caudal</b> (em direção à cauda). No encéfalo, o eixo curva-se, e rostral/caudal e dorsal/ventral mudam de direção entre tronco e hemisférios.</li><li><b>Ipsilateral</b> (mesmo lado) × <b>contralateral</b> (lado oposto). Sensação e movimento são controlados principalmente pelo hemisfério contralateral.</li></ul><div class="prova"><b>Cai na prova:</b> nomear planos de corte, usar termos de direção em frases e identificar estruturas em cortes sagitais e coronais.</div>'},
+{t:'Organização do sistema nervoso',h:'<ul><li><b>SNC</b>: encéfalo (cérebro, cerebelo, tronco) + medula espinal.</li><li><b>SNP</b>: 12 pares de nervos cranianos e 31 pares de espinais, gânglios e terminações.</li><li>Divisão funcional: <b>somático</b> (voluntário, músculo esquelético, sensibilidade) e <b>autônomo</b> (vísceras, glândulas, músculo liso e cardíaco).</li><li>O autônomo se divide em <b>simpático</b>, <b>parassimpático</b> e <b>entérico</b> (plexos do trato digestivo).</li></ul><h4>Embriologia em uma linha</h4><p>O tubo neural origina três vesículas: prosencéfalo (telencéfalo + diencéfalo), mesencéfalo e rombencéfalo (metencéfalo = ponte + cerebelo; mielencéfalo = bulbo).</p><div class="prova"><b>Cai na prova:</b> esquema SNC/SNP, somático/autônomo, e relacionar as divisões embrionárias às estruturas adultas.</div>'},
+{t:'Tecido nervoso, sinapse e neurotransmissores',h:'<ul><li><b>Neurônio</b>: dendritos (entrada), soma, axônio (saída), terminal. Veja na aba Neurônio.</li><li><b>Glia</b>: astrócitos (suporte, barreira hematoencefálica, metabolismo), oligodendrócitos (mielina no SNC), células de Schwann (mielina no SNP), microglia (imunidade), células ependimárias (revestem ventrículos, produzem líquor).</li><li>Potencial de repouso ≈ −70 mV. Despolarização até o limiar abre canais de Na⁺ e desencadeia o potencial de ação (tudo ou nada).</li></ul><div class="tw"><table><tr><th>Neurotransmissor</th><th>Função geral</th><th>Clínica</th></tr><tr><td>Glutamato</td><td>Excitatório principal</td><td>Excitotoxicidade (AVC), LTP e aprendizado</td></tr><tr><td>GABA</td><td>Inibitório principal</td><td>Benzodiazepínicos, ansiedade, epilepsia</td></tr><tr><td>Dopamina</td><td>Recompensa, movimento, motivação</td><td>Parkinson, esquizofrenia, dependência</td></tr><tr><td>Serotonina</td><td>Humor, sono, apetite</td><td>Depressão, ansiedade (ISRS)</td></tr><tr><td>Noradrenalina</td><td>Alerta e atenção</td><td>Estresse, TDAH, ansiedade</td></tr><tr><td>Acetilcolina</td><td>Atenção, memória, junção neuromuscular</td><td>Alzheimer, miastenia</td></tr><tr><td>Endorfinas</td><td>Analgesia, prazer</td><td>Opioides</td></tr></table></div><div class="prova"><b>Cai na prova:</b> desenhar e legendar o neurônio, ciclo da sinapse química, quem produz a mielina onde, e associar cada neurotransmissor a um transtorno.</div>'},
+{t:'Telencéfalo: lobos e áreas funcionais',h:'<ul><li>Dois hemisférios separados pela fissura longitudinal, unidos pelo corpo caloso. Superfície com giros e sulcos para aumentar a área.</li><li><b>Sulco central</b> separa frontal (motor) de parietal (sensitivo). <b>Fissura lateral</b> separa temporal de frontal e parietal.</li></ul><div class="tw"><table><tr><th>Área</th><th>Local</th><th>Função</th></tr><tr><td>Brodmann 4</td><td>Giro pré-central</td><td>Motora primária</td></tr><tr><td>Brodmann 3, 1, 2</td><td>Giro pós-central</td><td>Somatossensorial primária</td></tr><tr><td>Brodmann 17</td><td>Sulco calcarino</td><td>Visual primária (V1)</td></tr><tr><td>Brodmann 41/42</td><td>Giro de Heschl</td><td>Auditiva primária</td></tr><tr><td>Brodmann 44/45</td><td>Frontal inferior (esq.)</td><td>Broca, fala</td></tr><tr><td>Brodmann 22 (post.)</td><td>Temporal superior (esq.)</td><td>Wernicke, compreensão</td></tr></table></div><h4>Afasias clássicas</h4><ul><li><b>Broca</b>: fala não fluente, compreensão preservada, repetição prejudicada.</li><li><b>Wernicke</b>: fala fluente sem sentido, compreensão ruim.</li><li><b>Condução</b>: lesão do fascículo arqueado, com compreensão e fala fluente, mas repetição ruim.</li></ul><div class="prova"><b>Cai na prova:</b> lobos e funções, homúnculo, lateralização da linguagem, afasias e casos clássicos (Gage, Tan, H.M.).</div>'},
+{t:'Sistema límbico e circuitos de emoção e memória',h:'<ul><li>Não é uma estrutura única: é uma rede que inclui hipocampo, amígdala, hipotálamo, tálamo anterior, giro do cíngulo, septo e córtex orbitofrontal.</li><li><b>Circuito de Papez</b>: hipocampo → fórnix → corpos mamilares → tálamo anterior → giro do cíngulo → hipocampo. Ligado à memória.</li><li><b>Amígdala</b>: emoção e medo. <b>Hipocampo</b>: memória declarativa. <b>Hipotálamo</b>: resposta corporal da emoção.</li><li><b>Sistema de recompensa mesolímbico</b>: área tegmental ventral → núcleo accumbens (dopamina), com projeções ao pré-frontal.</li><li><b>Eixo HPA</b>: hipotálamo (CRH) → hipófise (ACTH) → adrenal (cortisol). Retroalimentação negativa pelo hipocampo e pelo pré-frontal.</li></ul><div class="prova"><b>Cai na prova:</b> localizar cada estrutura, dizer a função principal e ligá-la a um transtorno (TEPT, ansiedade, depressão, dependência) ou a um caso clínico.</div>'},
+{t:'Tronco encefálico, cerebelo e medula',h:'<ul><li><b>Tronco</b>: mesencéfalo, ponte, bulbo. Vias de passagem, formação reticular (alerta), centros vitais e nervos cranianos III–XII.</li><li><b>Cerebelo</b>: coordenação e aprendizado motor. Lesões geram sinais ipsilaterais.</li><li><b>Medula</b>: reflexos e vias. Termina em L1–L2 (cone medular), com cauda equina abaixo.</li><li><b>Decussação</b>: a via corticoespinal cruza no bulbo (pirâmides), por isso o hemisfério esquerdo controla o lado direito do corpo.</li></ul><div class="prova"><b>Cai na prova:</b> funções do tronco, cerebelo e sinais de lesão cerebelar, estrutura da medula e vias ascendentes e descendentes principais.</div>'},
+{t:'Sistema nervoso autônomo',h:'<div class="tw"><table><tr><th></th><th>Simpático</th><th>Parassimpático</th></tr><tr><td>Origem</td><td>Toracolombar (T1–L2)</td><td>Craniossacral (III, VII, IX, X e S2–S4)</td></tr><tr><td>Resposta</td><td>Luta ou fuga</td><td>Repouso e digestão</td></tr><tr><td>Pupila</td><td>Dilata (midríase)</td><td>Contrai (miose)</td></tr><tr><td>Coração</td><td>Aumenta frequência e força</td><td>Reduz frequência</td></tr><tr><td>Brônquios</td><td>Dilata</td><td>Contrai</td></tr><tr><td>Digestão</td><td>Inibe</td><td>Estimula</td></tr><tr><td>Bexiga</td><td>Relaxa detrusor, retém urina</td><td>Contrai detrusor, esvazia</td></tr><tr><td>Neurotransmissor pós-ganglionar</td><td>Noradrenalina (exceto sudoríparas: ACh)</td><td>Acetilcolina</td></tr></table></div><ul><li>Via de dois neurônios: pré-ganglionar (sempre ACh) e pós-ganglionar. Medula da adrenal funciona como um gânglio simpático e libera adrenalina.</li><li>Controle central: hipotálamo, amígdala, tronco (núcleo do trato solitário).</li></ul><div class="prova"><b>Cai na prova:</b> tabela simpático × parassimpático, origem e neurotransmissores, e como o estresse (psicologia) se traduz em respostas autonômicas.</div>'},
+{t:'Meninges, ventrículos, líquor e vascularização',h:'<ul><li><b>Meninges</b> (de fora para dentro): dura-máter, aracnoide, pia-máter. O espaço subaracnóideo contém líquor.</li><li><b>Líquor</b>: produzido nos plexos corioides, circula pelos ventrículos laterais → III ventrículo → aqueduto cerebral → IV ventrículo → espaço subaracnóideo, e é reabsorvido nas granulações aracnóideas.</li><li><b>Barreira hematoencefálica</b>: formada por capilares com junções firmes e pés de astrócitos.</li><li><b>Irrigação</b>: carótidas internas (circulação anterior) e vertebrais → basilar (circulação posterior), unidas no <b>polígono de Willis</b>.</li></ul><h4>AVC e sintomas</h4><ul><li><b>Artéria cerebral média</b>: hemiparesia e déficit sensitivo contralaterais (face e braço), afasia (esq.) ou negligência (dir.).</li><li><b>Cerebral anterior</b>: fraqueza da perna, abulia.</li><li><b>Cerebral posterior</b>: déficits visuais (hemianopsia), alexia sem agrafia.</li></ul><div class="prova"><b>Cai na prova:</b> sequência das meninges, circulação do líquor e quais déficits cada artéria produz.</div>'},
+{t:'Plasticidade, desenvolvimento e casos clássicos',h:'<ul><li><b>Plasticidade</b>: sinapses e circuitos mudam com experiência (LTP e LTD, poda sináptica, mielinização). Períodos sensíveis existem, mas a plasticidade continua na vida adulta.</li><li>Desenvolvimento: ≈100 bilhões de neurônios; pico de sinaptogênese nos primeiros anos; poda na adolescência; pré-frontal amadurece por último (≈25 anos).</li></ul><h4>Casos que você deve saber contar</h4><ul><li><b>Phineas Gage</b> (1848): barra de ferro no pré-frontal, mudança de personalidade.</li><li><b>Paciente H.M.</b> (1953): ressecção do hipocampo bilateral, amnésia anterógrada. Memória procedural preservada.</li><li><b>Paciente Tan</b> (Broca, 1861): lesão do frontal inferior esquerdo, só dizia "tan".</li><li><b>Split-brain</b> (Sperry, Gazzaniga): calosotomia, independência dos hemisférios.</li><li><b>Paciente S.M.</b>: lesão bilateral da amígdala, ausência de medo.</li></ul><div class="prova"><b>Cai na prova:</b> relacionar cada caso à estrutura e à função descoberta.</div>'},
+{t:'Corpo humano: visão geral dos sistemas',h:'<p>Para psicologia o foco é o sistema nervoso, mas ele depende dos outros:</p><ul><li><b>Endócrino</b>: hipotálamo, hipófise, adrenais (cortisol e adrenalina), tireoide, gônadas. Hormônios modulam humor, estresse e comportamento.</li><li><b>Imune</b>: citocinas inflamatórias influenciam humor e comportamento de doença (psiconeuroimunologia).</li><li><b>Musculoesquelético</b>: 206 ossos e mais de 600 músculos no adulto. O córtex motor e o cerebelo comandam os músculos pelas vias corticoespinais.</li><li><b>Cardiovascular e respiratório</b>: sob controle autonômico; sinais de ansiedade (taquicardia, hiperventilação) são autonômicos.</li><li><b>Digestório</b>: sistema nervoso entérico, "segundo cérebro", conversa com o encéfalo pelo vago.</li></ul><div class="prova"><b>Cai na prova:</b> como estresse e emoção aparecem no corpo (eixo HPA, autônomo, imune). Modelos 3D do corpo inteiro estão previstos para uma próxima versão.</div>'}
+];
+
+var FC=[
+['Linguagem','Que plano separa o corpo em anterior e posterior?','Plano coronal (frontal).'],
+['Linguagem','Diferença entre ipsilateral e contralateral?','Ipsilateral: mesmo lado. Contralateral: lado oposto.'],
+['Organização','O que forma o SNC e o SNP?','SNC: encéfalo + medula. SNP: 12 pares cranianos, 31 espinais e gânglios.'],
+['Organização','Três vesículas do tubo neural?','Prosencéfalo, mesencéfalo e rombencéfalo.'],
+['Neurônio','Qual parte do neurônio recebe sinais?','Dendritos e soma.'],
+['Neurônio','Quem forma a mielina no SNC e no SNP?','SNC: oligodendrócitos. SNP: células de Schwann.'],
+['Neurônio','O que é condução saltatória?','O potencial de ação salta de nó de Ranvier em nó, o que aumenta a velocidade.'],
+['Neurônio','Principais neurotransmissor excitatório e inibitório?','Excitatório: glutamato. Inibitório: GABA.'],
+['Neurônio','Qual neurotransmissor está ligado à recompensa e ao Parkinson?','Dopamina.'],
+['Neurônio','Mecanismo dos ISRS?','Bloqueiam a recaptação de serotonina.'],
+['Neurônio','Doença autoimune que ataca a mielina do SNC?','Esclerose múltipla.'],
+['Córtex','Função do lobo frontal?','Movimento voluntário, funções executivas, personalidade e fala (Broca).'],
+['Córtex','O que se espera de lesão parietal direita?','Heminegligência contralateral.'],
+['Córtex','Onde fica a área de Wernicke e qual sua função?','Temporal posterior superior (hemisfério dominante): compreensão da linguagem.'],
+['Córtex','Onde fica o córtex visual primário?','Lobo occipital, sulco calcarino (área 17, V1).'],
+['Córtex','Qual é o sulco que separa frontal e parietal?','Sulco central.'],
+['Córtex','Afasia de Broca em uma frase?','Fala não fluente, compreensão relativamente preservada.'],
+['Córtex','O que o caso Phineas Gage mostrou?','Lesão pré-frontal altera personalidade e controle de impulsos.'],
+['Límbico','Função principal da amígdala?','Processar emoções, sobretudo medo e ameaça.'],
+['Límbico','Função principal do hipocampo?','Formar e consolidar memórias declarativas; navegação espacial.'],
+['Límbico','O que aconteceu com H.M.?','Remoção bilateral do hipocampo: amnésia anterógrada.'],
+['Límbico','Qual estrutura é o "relé sensorial" do cérebro?','Tálamo (exceto olfato).'],
+['Límbico','Sequência do eixo HPA?','Hipotálamo (CRH) → hipófise (ACTH) → adrenal (cortisol).'],
+['Límbico','Qual estrutura central do circuito de recompensa recebe dopamina da VTA?','Núcleo accumbens.'],
+['Subcorticais','Qual doença degenera a substância negra?','Doença de Parkinson (perda de dopamina).'],
+['Subcorticais','Para que serve o corpo caloso?','Comunicação entre os hemisférios. Calosotomia gera o cérebro dividido.'],
+['Subcorticais','O que o cerebelo faz e qual o lado de sua lesão?','Coordena movimentos e equilíbrio. Sinais ipsilaterais.'],
+['Tronco','Ordem do tronco encefálico, de cima para baixo?','Mesencéfalo, ponte, bulbo.'],
+['Tronco','O que controla o bulbo?','Respiração, frequência cardíaca e pressão arterial.'],
+['Cranianos','Nervos cranianos sensitivos?','I (olfatório), II (óptico), VIII (vestibulococlear).'],
+['Cranianos','Qual nervo craniano é o principal parassimpático?','X, nervo vago.'],
+['Cranianos','Nervos que movem os olhos?','III (oculomotor), IV (troclear) e VI (abducente).'],
+['Cranianos','Qual nervo craniano é responsável pela expressão facial?','VII, facial.'],
+['Cranianos','Qual sentido chega ao córtex sem passar pelo tálamo?','Olfato (nervo I).'],
+['SNA','Origem do simpático e do parassimpático?','Simpático: T1–L2. Parassimpático: III, VII, IX, X e S2–S4.'],
+['SNA','O que o simpático faz com pupila e coração?','Dilata a pupila e aumenta a frequência cardíaca.'],
+['Medula','Onde termina a medula espinal?','No cone medular, em L1–L2.'],
+['Medula','Qual raiz espinal é sensitiva e qual é motora?','Dorsal: sensitiva. Ventral: motora.'],
+['Medula','Quantos pares de nervos espinais?','31 (8 C, 12 T, 5 L, 5 S, 1 Co).'],
+['Sistemas','Ordem das meninges, de fora para dentro?','Dura-máter, aracnoide, pia-máter.']
+];
+
+/* ============ ESTADO E UI BÁSICA ============ */
+var MODES=['encefalo','neuronio','nervos','medula'];
+var TABS=MODES.concat(['resumos','flashcards','sobre']);
+var seen=store.get('atlas.seen',{});
+var cur=null,selId=null;
+
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function partList(mode){return DATA[mode]}
+function colorOf(mode,p){return p.tipo?TC[p.tipo]:p.cor}
+function partColor(mode,p){return mode==='nervos'&&p.tipo?TC[p.tipo]:(p.cor||'#888')}
+
+function renderInfo(){
+  var p=partList(cur).filter(function(x){return x.id===selId})[0];
+  var box=$('#info');
+  if(!p){
+    var intro={encefalo:'Clique numa região do cérebro ou escolha na lista. Use o controle "Córtex" para enxergar as estruturas profundas.',neuronio:'Clique numa parte do neurônio. O ponto amarelo mostra um potencial de ação percorrendo o axônio.',nervos:'Clique num nervo. Azul: sensitivo. Laranja: motor. Verde: misto.',medula:'Clique numa região da coluna ou na medula. Use "Isolar selecionada" para destacar.'}[cur];
+    box.innerHTML='<h2>'+{encefalo:'Encéfalo',neuronio:'Neurônio e sinapse',nervos:'12 pares de nervos cranianos',medula:'Medula espinal e coluna'}[cur]+'</h2><p>'+intro+'</p>';
+    return;
+  }
+  var h='<h2>'+esc(p.nome)+(p.tipo?'<span class="badge" style="background:'+TC[p.tipo]+'">'+T[p.tipo]+'</span>':'')+'</h2><div class="sub">'+esc(p.sub)+'</div><p>'+esc(p.resumo)+'</p>';
+  h+='<div class="lab">Pontos principais</div><ul>'+p.pontos.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
+  h+='<div class="lab">Na clínica e na psicologia</div><div class="clin">'+esc(p.clinica)+'</div>';
+  h+='<div class="dica"><b>Para lembrar:</b> '+esc(p.dica)+'</div>';
+  var k=cur+'.'+p.id;
+  h+='<button class="seenbtn" id="seenBtn" type="button" aria-pressed="'+(!!seen[k])+'">'+(seen[k]?'Estudado ✓':'Marcar como estudado')+'</button>';
+  box.innerHTML=h;
+  $('#seenBtn').onclick=function(){seen[k]=!seen[k];store.set('atlas.seen',seen);renderInfo();renderParts()};
+}
+function renderParts(){
+  var wrap=$('#parts');wrap.innerHTML='';
+  var n=0,list=partList(cur);
+  list.forEach(function(p){
+    var b=document.createElement('button');b.type='button';
+    var ok=!!seen[cur+'.'+p.id];if(ok)n++;
+    b.innerHTML='<i style="background:'+partColor(cur,p)+'"></i>'+esc(p.nome)+(ok?' <span class="ok"></span>':'');
+    b.setAttribute('aria-pressed',String(p.id===selId));
+    b.onclick=function(){select(p.id)};
+    wrap.appendChild(b);
+  });
+  $('#progTxt').textContent='Estudadas nesta seção: '+n+' de '+list.length;
+  $('#progBar').style.width=(100*n/list.length)+'%';
+}
+function select(id){
+  selId=(selId===id&&false)?null:id;
+  var p=partList(cur).filter(function(x){return x.id===id})[0];
+  if(cur==='encefalo'&&p){
+    if(p.deep&&cortexVal>.5){setCortex(18)}
+    else if(!p.deep&&['frontal','parietal','temporal','occipital'].indexOf(id)>=0&&cortexVal<.5){setCortex(100)}
+  }
+  renderInfo();renderParts();applyVisuals();
+}
+
+/* ============ 3D ============ */
+var G={ok:typeof THREE!=='undefined'};
+var meshes=[],tickers=[],cortexVal=1,isolate=false,auto=false,hover=null,dragging=false;
+var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+var VIEW={encefalo:{d:38,ry:-Math.PI/2,rx:.12},neuronio:{d:64,ry:0,rx:0},nervos:{d:44,ry:-1.1,rx:.12},medula:{d:80,ry:-Math.PI/2,rx:0}};
+var camD=38,targetD=38,renderer,scene,camera,root,inner,raycaster,running=false;
+
+function initGL(){
+  if(!G.ok){$('#stage').innerHTML='<div class="webglfail">Não foi possível carregar a biblioteca 3D (three.js). Verifique sua conexão e recarregue. Os resumos e flashcards continuam funcionando.</div>';return false}
+  try{renderer=new THREE.WebGLRenderer({canvas:$('#cv'),antialias:true,alpha:true})}catch(e){$('#stage').innerHTML='<div class="webglfail">Seu navegador não conseguiu iniciar o WebGL. Tente outro navegador ou ative a aceleração de hardware. Os resumos e flashcards continuam funcionando.</div>';G.ok=false;return false}
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(40,1,.1,300);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x6b7f8a,.85));
+  var d1=new THREE.DirectionalLight(0xffffff,.8);d1.position.set(12,18,24);scene.add(d1);
+  var d2=new THREE.DirectionalLight(0xbfd8ff,.35);d2.position.set(-14,-6,-18);scene.add(d2);
+  root=new THREE.Group();scene.add(root);
+  raycaster=new THREE.Raycaster();
+  var stage=$('#stage');
+  function size(){var w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+  if(window.ResizeObserver)new ResizeObserver(size).observe(stage);window.addEventListener('resize',size);size();
+  bindPointer(stage);
+  return true;
+}
+function mat(color,op){return new THREE.MeshStandardMaterial({color:color,roughness:.55,metalness:.04,transparent:true,opacity:op==null?1:op,emissive:0x000000})}
+function add(parent,geo,color,pid,o){o=o||{};var m=new THREE.Mesh(geo,mat(color,o.opacity));m.userData={pid:pid,base:o.opacity==null?1:o.opacity,cortex:!!o.cortex,nopick:!!o.nopick};if(pid)meshes.push(m);parent.add(m);return m}
+function clearScene(){
+  while(root.children.length){var c=root.children[0];root.remove(c);c.traverse(function(o){if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose()})}
+  meshes=[];tickers=[];
+}
+function rng(seed){var s=seed;return function(){s=(s*16807)%2147483647;return (s-1)/2147483646}}
+function blob(rx,ry,rz,amp,fr,seed){
+  var g=new THREE.SphereGeometry(1,56,40),p=g.attributes.position,v=new THREE.Vector3();
+  for(var i=0;i<p.count;i++){
+    v.fromBufferAttribute(p,i);
+    var n=Math.sin(v.x*fr+seed)*Math.sin(v.y*fr+seed*1.7)*Math.sin(v.z*fr+seed*2.3)+.5*Math.sin(v.x*fr*2.1+seed*.6)*Math.sin(v.z*fr*1.9+seed);
+    var k=1+amp*n;
+    p.setXYZ(i,v.x*k*rx,v.y*k*ry,v.z*k*rz);
+  }
+  g.computeVertexNormals();return g;
+}
+function ell(rx,ry,rz){var g=new THREE.SphereGeometry(1,32,24);g.scale(rx,ry,rz);return g}
+function tube(pts,r,seg){return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(function(a){return new THREE.Vector3(a[0],a[1],a[2])})),seg||40,r,10,false)}
+
+var B={};
+B.encefalo=function(g){
+  var C=function(id){return DATA.encefalo.filter(function(p){return p.id===id})[0].cor};
+  [-1,1].forEach(function(s,i){
+    var m;
+    m=add(g,blob(3.4,4.0,4.4,.06,5,1+i),C('frontal'),'frontal',{cortex:1});m.position.set(3.2*s,1.6,4.6);
+    m=add(g,blob(3.4,3.0,3.8,.06,5,3+i),C('parietal'),'parietal',{cortex:1});m.position.set(3.4*s,3.4,-1.6);
+    m=add(g,blob(2.7,2.2,5.2,.06,5,5+i),C('temporal'),'temporal',{cortex:1});m.position.set(4.6*s,-2.4,-.4);
+    m=add(g,blob(3.0,2.9,2.8,.06,5,7+i),C('occipital'),'occipital',{cortex:1});m.position.set(3.0*s,.8,-6.6);
+    m=add(g,ell(1.1,1.0,1.5),C('talamo'),'talamo');m.position.set(1.2*s,.3,-.3);
+    m=add(g,ell(.85,.85,.85),C('amigdala'),'amigdala');m.position.set(3.4*s,-2.6,2.4);
+    add(g,tube([[3.3*s,-3,1.6],[4.0*s,-2.6,-1.5],[3.4*s,-1.2,-4],[2.2*s,.6,-4.8]],.5,50),C('hipocampo'),'hipocampo');
+    add(g,tube([[1.9*s,2.9,3.2],[2.7*s,3.5,0],[3.0*s,1.7,-3]],.55,40),C('gangliosbase'),'gangliosbase');
+    m=add(g,ell(.9,1.5,2.2),C('gangliosbase'),'gangliosbase');m.position.set(3.5*s,.2,1.3);
+    m=add(g,ell(.7,.95,1.1),C('gangliosbase'),'gangliosbase');m.position.set(2.5*s,-.1,1.1);
+    m=add(g,ell(.75,.75,.75),C('accumbens'),'accumbens');m.position.set(1.4*s,-.9,3.9);
+  });
+  var cb=add(g,blob(4.6,2.2,3.0,.05,12,11),C('cerebelo'),'cerebelo');cb.position.set(0,-4.4,-6.4);
+  var cc=add(g,tube([[0,1.6,6],[0,3.0,3.5],[0,3.5,0],[0,3.0,-3],[0,1.2,-5]],.7,40),C('caloso'),'caloso');cc.scale.set(2.4,.8,1);cc.position.y+=0;
+  var h=add(g,ell(.95,.75,.95),C('hipotalamo'),'hipotalamo');h.position.set(0,-1.6,1.5);
+  var hp=add(g,ell(.4,.4,.4),C('hipotalamo'),'hipotalamo');hp.position.set(0,-2.7,1.7);
+  var tr=C('tronco');
+  var m1=add(g,new THREE.CylinderGeometry(1.2,1.3,2.4,24),tr,'tronco');m1.position.set(0,-2.2,-1.4);m1.rotation.x=-.25;
+  var m2=add(g,ell(1.9,1.4,1.6),tr,'tronco');m2.position.set(0,-4.2,-1.9);
+  var m3=add(g,new THREE.CylinderGeometry(1.0,.7,3.6,24),tr,'tronco');m3.position.set(0,-6.6,-2.6);m3.rotation.x=-.3;
+  g.position.set(0,0,0);
+};
+B.neuronio=function(g){
+  var C=function(id){return DATA.neuronio.filter(function(p){return p.id===id})[0].cor};
+  g.position.set(-10,0,0);
+  add(g,new THREE.SphereGeometry(2.2,40,30),C('soma'),'soma',{opacity:.9});
+  add(g,new THREE.SphereGeometry(.95,24,18),C('nucleo'),'nucleo');
+  var R=rng(42);
+  for(var k=0;k<7;k++){
+    var a=Math.PI*(.62+.76*k/6)+(R()-.5)*.25, b=(R()-.5)*1.6;
+    var dir=new THREE.Vector3(Math.cos(a),Math.sin(a)*Math.cos(b),Math.sin(a)*Math.sin(b)).normalize();
+    var p0=dir.clone().multiplyScalar(1.8),p1=dir.clone().multiplyScalar(4+R()),p2=dir.clone().multiplyScalar(6.5+R()*1.5);
+    p1.add(new THREE.Vector3(0,(R()-.5)*1.2,(R()-.5)*1.2));
+    add(g,tube([[p0.x,p0.y,p0.z],[p1.x,p1.y,p1.z],[p2.x,p2.y,p2.z]],.28,20),C('dendritos'),'dendritos');
+    for(var t=0;t<2;t++){
+      var q=new THREE.Vector3((R()-.5)*3,(R()-.5)*3,(R()-.5)*3),e=p2.clone().add(dir.clone().multiplyScalar(2+R()*1.5)).add(q);
+      var mid=p1.clone().lerp(p2,.9);
+      add(g,tube([[mid.x,mid.y,mid.z],[p2.x+q.x*.3,p2.y+q.y*.3,p2.z+q.z*.3],[e.x,e.y,e.z]],.13,16),C('dendritos'),'dendritos');
+    }
+  }
+  var hill=add(g,new THREE.ConeGeometry(1.2,2.2,24),C('soma'),'soma',{opacity:.9});hill.rotation.z=-Math.PI/2;hill.position.set(2.8,0,0);
+  var ax=add(g,new THREE.CylinderGeometry(.24,.24,24,16),C('axonio'),'axonio');ax.rotation.z=Math.PI/2;ax.position.set(14,0,0);
+  for(var i=0;i<6;i++){
+    var cx=6+i*3.3;
+    var my=add(g,new THREE.CylinderGeometry(.72,.72,2.7,24),C('mielina'),'mielina',{opacity:.92});my.rotation.z=Math.PI/2;my.position.set(cx,0,0);
+    var nd=add(g,new THREE.TorusGeometry(.42,.12,10,24),C('ranvier'),'ranvier');nd.rotation.y=Math.PI/2;nd.position.set(cx+1.65,0,0);
+  }
+  var tx=26;
+  for(var j=0;j<4;j++){
+    var yy=(j-1.5)*2.2,zz=(j%2?1:-1)*1.2;
+    add(g,tube([[tx,0,0],[tx+1.8,yy*.45,zz*.4],[tx+3.4,yy,zz]],.17,16),C('terminal'),'terminal');
+    var bt=add(g,new THREE.SphereGeometry(.7,20,16),C('terminal'),'terminal');bt.position.set(tx+3.6,yy,zz);
+  }
+  var pulse=new THREE.Mesh(new THREE.SphereGeometry(.55,16,12),new THREE.MeshBasicMaterial({color:0xFFE066}));
+  var halo=new THREE.Mesh(new THREE.SphereGeometry(1.0,16,12),new THREE.MeshBasicMaterial({color:0xFFE066,transparent:true,opacity:.28,depthWrite:false}));
+  pulse.add(halo);g.add(pulse);pulse.position.set(2,0,0);
+  var t0=performance.now();
+  tickers.push(function(now){var u=((now-t0)/3200)%1.35;if(reduce){pulse.visible=false;return}pulse.visible=u<1;pulse.position.x=4+u*(tx-4)})
+};
+B.nervos=function(g){
+  var tc=function(id){var p=DATA.nervos.filter(function(q){return q.id===id})[0];return TC[p.tipo]};
+  var ctx=new THREE.Mesh(ell(7,5,9),new THREE.MeshStandardMaterial({color:0x9fb2bd,transparent:true,opacity:.1,depthWrite:false}));ctx.position.set(0,5.5,2);g.add(ctx);
+  var trc=DATA.nervos[12].cor;
+  var m1=add(g,new THREE.CylinderGeometry(1.2,1.35,3,24),trc,'tronco');m1.position.set(0,3.4,-.2);m1.rotation.x=-.2;
+  var m2=add(g,ell(1.9,1.5,1.7),trc,'tronco');m2.position.set(0,.2,.1);
+  var m3=add(g,new THREE.CylinderGeometry(1.1,.75,5,24),trc,'tronco');m3.position.set(0,-3.3,-.4);m3.rotation.x=-.12;
+  var cb=add(g,ell(4,1.7,2.4),0xB79CED,null);cb.position.set(0,-.4,-3.8);cb.material.opacity=.35;g.add(cb);
+  var N={
+    cn1:[[1.2,6.4,5.5],[1.3,6,7],[1.2,5.6,9.4]],
+    cn2:[[.2,5.6,5.2],[1.6,5.4,7.2],[3.3,5.2,9.2]],
+    cn3:[[.5,3.9,1.1],[1.8,3.6,3.8],[3.2,3.3,6.4]],
+    cn4:[[.5,4.4,-1.2],[2.6,4.3,-.6],[3.6,3.8,3.2],[3.9,3.6,5.6]],
+    cn5:[[1.3,.7,1.2],[3.2,.5,2.2],[5.4,.2,4.4]],
+    cn6:[[.3,-.9,1.5],[1.2,-1,4.5],[2.4,-.5,7.6]],
+    cn7:[[1.6,-1.5,1.0],[3.4,-1.9,2.4],[5.6,-2.3,3.4]],
+    cn8:[[1.7,-1.7,.4],[4,-2.6,.6],[6.2,-3,.9]],
+    cn9:[[1.1,-3.2,.5],[3,-4,1.8],[4.6,-5,2.6]],
+    cn10:[[1.0,-3.8,.3],[3,-6.5,1.2],[4.2,-10,1.8]],
+    cn11:[[.9,-5.2,-.2],[2.6,-8,-.4],[4.6,-11,-.6]],
+    cn12:[[.4,-3.4,1.2],[1.4,-6,2.6],[2,-9,3.4]]
+  };
+  var R={cn1:.22,cn2:.34,cn5:.42,cn10:.3};
+  Object.keys(N).forEach(function(id){
+    var sides=(id==='cn2')?[1,-1]:[1,-1];
+    sides.forEach(function(s){
+      var pts=N[id].map(function(a){return [a[0]*s,a[1],a[2]]});
+      add(g,tube(pts,R[id]||.2,36),tc(id),id);
+    });
+  });
+  [1,-1].forEach(function(s){
+    var bulb=add(g,ell(.55,.45,1.0),tc('cn1'),'cn1');bulb.position.set(1.2*s,5.6,9.6);
+    var eye=add(g,new THREE.SphereGeometry(1.2,24,18),0xf3f6f8,'cn2');eye.position.set(3.6*s,5.2,9.9);
+    var iris=add(g,new THREE.SphereGeometry(.55,16,12),0x2F7DE1,'cn2');iris.position.set(3.7*s,5.2,10.9);
+  });
+  g.position.set(0,-1.5,0);
+};
+B.medula=function(g){
+  var C=function(id){return DATA.medula.filter(function(p){return p.id===id})[0].cor};
+  var cur=new THREE.CatmullRomCurve3([[0,24,0.3],[0,19,1.6],[0,13,-.6],[0,3,-3.1],[0,-8,-.8],[0,-15,2.0],[0,-21,1.0],[0,-26,-2]].map(function(a){return new THREE.Vector3(a[0],a[1],a[2])}));
+  var N=24,u0=.025,du=.0335;
+  var up=new THREE.Vector3(0,1,0),canal=[],regions=[['cervical',7,1.0,1.25],['toracica',12,1.35,1.9],['lombar',5,2.05,2.25]];
+  var idx=0,col;
+  regions.forEach(function(r){
+    for(var i=0;i<r[1];i++){
+      var f=i/(r[1]-1||1),R=r[2]+(r[3]-r[2])*f,u=u0+idx*du;
+      var P=cur.getPointAt(u),Tn=cur.getTangentAt(u).normalize();
+      var q=new THREE.Quaternion().setFromUnitVectors(up,Tn);
+      var vg=new THREE.Group();vg.position.copy(P);vg.quaternion.copy(q);g.add(vg);
+      var col=C(r[0]);
+      add(vg,new THREE.CylinderGeometry(R,R*1.05,du*50*.62,28),col,r[0]);
+      var arch=add(vg,new THREE.TorusGeometry(R*.62,R*.17,10,24),col,r[0]);arch.rotation.x=Math.PI/2;arch.position.set(0,0,-(R+.25));
+      var sp=add(vg,new THREE.CylinderGeometry(R*.1,R*.2,R*1.5,10),col,r[0]);sp.rotation.x=Math.PI/2+.45;sp.position.set(0,-R*.25,-(R*1.95+.5));
+      var tp=add(vg,new THREE.CylinderGeometry(R*.1,R*.12,R*2.8,8),col,r[0]);tp.rotation.z=Math.PI/2;tp.position.set(0,0,-(R+.25));
+      var cp=new THREE.Vector3(0,0,-(R+.25)).applyQuaternion(q).add(P);canal.push(cp);
+      idx++;
+    }
+  });
+  var sacU=u0+idx*du+.03,sP=cur.getPointAt(Math.min(sacU,.985)),sT=cur.getTangentAt(Math.min(sacU,.985)).normalize();
+  var sg=new THREE.Group();sg.position.copy(sP);sg.quaternion.setFromUnitVectors(up,sT);g.add(sg);
+  var sc=add(sg,new THREE.CylinderGeometry(2.6,.9,5.4,28),C('sacro'),'sacro');sc.position.set(0,-.4,0);
+  var cx=add(sg,new THREE.CylinderGeometry(.7,.2,2.2,16),C('sacro'),'sacro');cx.position.set(0,-4.3,-.3);
+  /* medula */
+  var cordPts=[];
+  var top=cur.getPointAt(0);cordPts.push(top.clone().add(new THREE.Vector3(0,2.2,-.5)));
+  canal.forEach(function(p,i){if(i<19||i===19)cordPts.push(p.clone())});
+  var last=canal[19].clone();
+  var cord=add(g,new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cordPts),120,.55,12,false),C('medula'),'medula');
+  var cone=add(g,new THREE.ConeGeometry(.55,1.6,12),C('medula'),'medula');cone.position.copy(last).add(new THREE.Vector3(0,-1.1,-.15));cone.rotation.x=Math.PI;
+  /* cauda equina */
+  var R2=rng(7);
+  for(var k=0;k<12;k++){
+    var a=(k/12)*Math.PI*2,sx=Math.cos(a)*.35,sz=Math.sin(a)*.35;
+    var pts=[[last.x+sx*.3,last.y-1.5,last.z+sz*.3],[last.x+sx,last.y-5,last.z+sz-.2],[last.x+sx*1.2,last.y-9.5,last.z-.9+sz]];
+    add(g,tube(pts,.09,20),C('cauda'),'cauda');
+  }
+  /* nervos espinais */
+  for(var n=0;n<19;n++){
+    var cp=canal[n],tn=cur.getTangentAt(u0+n*du);
+    [-1,1].forEach(function(s){
+      var a=cp.clone(),b=cp.clone().add(new THREE.Vector3(s*2.6,-.6,0.2)),c=cp.clone().add(new THREE.Vector3(s*(3.6+n*.05),-1.4,.4));
+      add(g,tube([[a.x,a.y,a.z],[b.x,b.y,b.z],[c.x,c.y,c.z]],.13,12),C('nervos'),'nervos');
+    });
+  }
+  /* base do crânio / bulbo */
+  var bulbo=new THREE.Mesh(new THREE.SphereGeometry(1.7,20,16),new THREE.MeshStandardMaterial({color:0x8FA3AE,roughness:.6}));bulbo.position.copy(top).add(new THREE.Vector3(0,3.2,-.2));g.add(bulbo);
+  g.position.set(0,0,0);
+};
+
+function build(mode){
+  clearScene();
+  inner=new THREE.Group();root.add(inner);
+  B[mode](inner);
+  var v=VIEW[mode];targetD=v.d;camD=v.d*1.15;root.rotation.set(v.rx,v.ry,0);
+  applyVisuals();
+}
+
+function applyVisuals(){
+  if(!G.ok)return;
+  meshes.forEach(function(m){
+    var u=m.userData,o=u.base;
+    if(u.cortex)o*=cortexVal;
+    if(isolate&&selId&&u.pid!==selId)o*=.12;
+    m.material.opacity=o;m.material.depthWrite=o>.9;m.visible=o>.015;
+    var e=u.pid===selId?0x55302a:(u.pid===hover?0x2a2a2a:0);
+    m.material.emissive.setHex(e);
+  });
+}
+function setCortex(v){cortexVal=v/100;$('#cortex').value=v;applyVisuals()}
+
+function pickAt(ev){
+  var r=$('#cv').getBoundingClientRect();
+  var x=((ev.clientX-r.left)/r.width)*2-1,y=-((ev.clientY-r.top)/r.height)*2+1;
+  raycaster.setFromCamera({x:x,y:y},camera);
+  var list=meshes.filter(function(m){return m.visible&&!(m.userData.cortex&&cortexVal<.5)&&!(isolate&&selId&&m.userData.pid!==selId)});
+  var hit=raycaster.intersectObjects(list,false)[0];
+  return hit?hit.object.userData.pid:null;
+}
+function bindPointer(el){
+  var ptrs={},lastPinch=0,down=null,tip=$('#tip');
+  el.addEventListener('pointerdown',function(e){el.setPointerCapture(e.pointerId);ptrs[e.pointerId]={x:e.clientX,y:e.clientY};down={x:e.clientX,y:e.clientY,moved:false};dragging=true;el.classList.add('drag')});
+  el.addEventListener('pointermove',function(e){
+    var p=ptrs[e.pointerId];
+    if(!p){
+      var id=pickAt(e);if(id!==hover){hover=id;applyVisuals()}
+      var nm=id&&partList(cur).filter(function(q){return q.id===id})[0];
+      if(nm){var r=el.getBoundingClientRect();tip.textContent=nm.nome;tip.style.left=(e.clientX-r.left)+'px';tip.style.top=(e.clientY-r.top)+'px';tip.style.opacity=1}else tip.style.opacity=0;
+      return;
+    }
+    var n=Object.keys(ptrs).length;
+    if(n===1){
+      var dx=e.clientX-p.x,dy=e.clientY-p.y;
+      if(Math.abs(e.clientX-down.x)+Math.abs(e.clientY-down.y)>5)down.moved=true;
+      root.rotation.y+=dx*.009;root.rotation.x=Math.max(-1.3,Math.min(1.3,root.rotation.x+dy*.009));
+    }else if(n===2){
+      ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+      var k=Object.keys(ptrs),a=ptrs[k[0]],b=ptrs[k[1]],d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(lastPinch){targetD=Math.max(14,Math.min(110,targetD*(lastPinch/d)))}
+      lastPinch=d;down.moved=true;return;
+    }
+    p.x=e.clientX;p.y=e.clientY;
+  });
+  function up(e){
+    var had=ptrs[e.pointerId];delete ptrs[e.pointerId];lastPinch=0;
+    if(!Object.keys(ptrs).length){dragging=false;el.classList.remove('drag')}
+    if(had&&down&&!down.moved&&e.type==='pointerup'){var id=pickAt(e);if(id)select(id)}
+  }
+  el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+  el.addEventListener('pointerleave',function(){hover=null;tip.style.opacity=0;applyVisuals()});
+  el.addEventListener('wheel',function(e){e.preventDefault();targetD=Math.max(14,Math.min(110,targetD*(1+Math.sign(e.deltaY)*.08)))},{passive:false});
+}
+function frame(now){
+  if(!running)return;
+  requestAnimationFrame(frame);
+  if(auto&&!dragging&&!reduce)root.rotation.y+=.005;
+  camD+=(targetD-camD)*.12;camera.position.set(0,0,camD);camera.lookAt(0,0,0);
+  for(var i=0;i<tickers.length;i++)tickers[i](now);
+  renderer.render(scene,camera);
+}
+function start(){if(!G.ok||running)return;running=true;requestAnimationFrame(frame)}
+function stop(){running=false}
+
+/* ============ TABS ============ */
+function renderLegend(){
+  var L=$('#legend');
+  if(cur==='nervos'){L.hidden=false;L.innerHTML='<span><i style="background:'+TC.s+'"></i>Sensitivo</span><span><i style="background:'+TC.m+'"></i>Motor</span><span><i style="background:'+TC.b+'"></i>Misto</span>'}
+  else L.hidden=true;
+}
+function showTab(t,fromHash){
+  if(TABS.indexOf(t)<0)t='encefalo';
+  document.querySelectorAll('nav.tabs button').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.tab===t))});
+  ['viewer','resumos','flashcards','sobre'].forEach(function(id){$('#'+id).hidden=true});
+  if(MODES.indexOf(t)>=0){
+    $('#viewer').hidden=false;
+    if(cur!==t){
+      cur=t;selId=null;hover=null;
+      if(t!=='encefalo')cortexVal=1;
+      $('#cortexWrap').hidden=(t!=='encefalo');
+      if(G.ok){build(t)}
+      renderInfo();renderParts();renderLegend();
+      if(G.ok)setCortex(cortexVal*100)
+    }
+    if(G.ok){var s=$('#stage'),w=s.clientWidth;if(renderer&&w){renderer.setSize(w,s.clientHeight,false);camera.aspect=w/s.clientHeight;camera.updateProjectionMatrix()}start()}
+  }else{
+    stop();
+    $('#'+t).hidden=false;
+    if(t==='flashcards')fcRender();
+  }
+  if(!fromHash){try{history.replaceState(null,'','#'+t)}catch(e){location.hash=t}}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('nav.tabs button').forEach(function(b){b.addEventListener('click',function(){showTab(b.dataset.tab)})});
+window.addEventListener('hashchange',function(){var h=location.hash.slice(1);if(TABS.indexOf(h)>=0)showTab(h,true)});
+
+/* ============ CONTROLES ============ */
+$('#bAuto').onclick=function(){auto=!auto;this.setAttribute('aria-pressed',String(auto))};
+$('#bIso').onclick=function(){isolate=!isolate;this.setAttribute('aria-pressed',String(isolate));applyVisuals()};
+$('#bReset').onclick=function(){if(!G.ok)return;var v=VIEW[cur];root.rotation.set(v.rx,v.ry,0);targetD=v.d};
+$('#cortex').addEventListener('input',function(){cortexVal=this.value/100;applyVisuals()});
+$('#themeBtn').onclick=function(){
+  var r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark';
+};
+
+/* ============ RESUMOS ============ */
+(function(){
+  var h='';
+  RES.forEach(function(r,i){h+='<details'+(i===0?' open':'')+'><summary>'+esc(r.t)+'</summary><div class="in">'+r.h+'</div></details>'});
+  $('#resList').innerHTML=h;
+})();
+
+/* ============ FLASHCARDS ============ */
+var fcKnown=store.get('atlas.fc',{}),fcOrder=[],fcI=0,fcFlip=false;
+(function(){
+  var temas=['Todos'].concat(FC.map(function(c){return c[0]}).filter(function(v,i,a){return a.indexOf(v)===i}));
+  $('#fcTema').innerHTML=temas.map(function(t){return '<option>'+esc(t)+'</option>'}).join('');
+})();
+function fcBuild(shuffle){
+  var tema=$('#fcTema').value,only=$('#fcOnlyNew').checked;
+  fcOrder=[];
+  FC.forEach(function(c,i){if((tema==='Todos'||c[0]===tema)&&(!only||!fcKnown[i]))fcOrder.push(i)});
+  if(shuffle)for(var i=fcOrder.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=fcOrder[i];fcOrder[i]=fcOrder[j];fcOrder[j]=t}
+  fcI=0;fcFlip=false;
+}
+function fcRender(){
+  if(!fcOrder.length||fcI>=fcOrder.length)fcBuild(false);
+  var known=Object.keys(fcKnown).filter(function(k){return fcKnown[k]}).length;
+  $('#fcCount').textContent=fcOrder.length?('Cartão '+(fcI+1)+' de '+fcOrder.length+' · já sei '+known+' de '+FC.length):('Nada por aqui. Já sei '+known+' de '+FC.length);
+  var c=$('#fcCard');
+  if(!fcOrder.length){c.innerHTML='<div class="q">Todos os cartões deste tema estão marcados como sabidos.</div><small>Desmarque "só os que ainda não sei" para revisar.</small>';return}
+  var d=FC[fcOrder[fcI]];
+  c.innerHTML='<div class="t">'+esc(d[0])+'</div><div class="q">'+esc(d[1])+'</div>'+(fcFlip?'<div class="a">'+esc(d[2])+'</div>':'<small>Clique para ver a resposta</small>');
+}
+function fcNext(known){
+  if(!fcOrder.length)return;
+  var idx=fcOrder[fcI];fcKnown[idx]=!!known;store.set('atlas.fc',fcKnown);
+  fcI++;fcFlip=false;if(fcI>=fcOrder.length){fcBuild(false)}
+  fcRender();
+}
+$('#fcCard').onclick=function(){fcFlip=!fcFlip;fcRender()};
+$('#fcYes').onclick=function(){fcNext(true)};
+$('#fcNo').onclick=function(){fcNext(false)};
+$('#fcShuf').onclick=function(){fcBuild(true);fcRender()};
+$('#fcTema').onchange=function(){fcBuild(false);fcRender()};
+$('#fcOnlyNew').onchange=function(){fcBuild(false);fcRender()};
+
+/* ============ INÍCIO ============ */
+initGL();
+var h0=location.hash.slice(1);
+showTab(TABS.indexOf(h0)>=0?h0:'encefalo',true);
+})();
+</script>
